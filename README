@@ -13,8 +13,39 @@ Sample puppet modules. Most of them were downloaded from forge.puppetlabs.com:
 
 https://forge.puppetlabs.com/puppetlabs/puppetdb
 https://forge.puppetlabs.com/puppetlabs/apache
+https://forge.puppetlabs.com/saz/ssh <-- this one is customized in order to work on SLES
+http://forge.puppetlabs.com/saz/ntp
+
+Custom modules are profile, base and webapp
+
+Some requirements like stdlib and concat were downloaded automatically.
 
 scripts:
 
 Some scripts used to automate the build and decomissioning of VMs
 
+trash-node: 
+  - destroys the VM/delete the VM image
+  - deletes the system in spacewalk
+  - deactivates the node in puppetdb
+  - remove it from puppet (cert revocation and so on)
+  - delete it in foreman
+  - clean icinga config files and reload icinga
+
+destroy-vm: helper script for trash-node, connects to remote hypervisor and deletes the vm
+clean-icinga: helper for trashnode, purges icinga config
+
+vmspawn:
+This script uses virt-install and virsh to create and connect to VMs.
+It's somehow bound to the process-flow described in the provisioning-templates.
+For example, machines that are successfully installed should be powered off (defined in the
+templates) and vmspawn goes ahead and starts them again in order to continue the process.
+This is a hacky workaround for buggy VM reboot on Ubuntu 12.04
+Read about kvmclock and RHEL6 on Ubuntu 12.04 KVM: https://bugs.launchpad.net/centos/+bug/1025188
+Configuration inside the script. This is run on the hypervisor.
+
+You may catch me as lowercase in irc.freenode.net
+
+Regards,
+
+Mattias

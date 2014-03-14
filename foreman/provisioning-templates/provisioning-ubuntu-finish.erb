@@ -1,0 +1,39 @@
+# Allow unsigned packages and ignore the warning, needed for our installation source.
+echo 'APT::Get::AllowUnauthenticated "true";' > /etc/apt/apt.conf.d/99trust_unsigned
+
+#Hacky way to overwrite default repos
+cat <<EOF >/etc/apt/sources.list
+deb http://<%= @host.params['spacewalk_host'] %>:80/pub/ubuntu/mirror/de.archive.ubuntu.com/ubuntu/ precise main
+deb-src http://<%= @host.params['spacewalk_host'] %>:80/pub/ubuntu/mirror/de.archive.ubuntu.com/ubuntu/ precise main
+EOF
+
+#Hacky way to include custom repos, but the preseed does not seem to want my custom ones :/
+cat <<EOF >/etc/apt/sources.list.d/puppet.list
+deb http://<%= @host.params['spacewalk_host'] %>:80/pub/ubuntu/mirror/apt.puppetlabs.com precise main dependencies
+EOF
+
+cat <<EOF >>/etc/apt/sources.list.d/spacewalk.list
+deb http://<%= @host.params['spacewalk_host'] %>:80/pub/ubuntu/spacewalk ./
+EOF
+
+apt-get update
+apt-get --assume-yes install puppet rhn-client-tools rhnsd apt-transport-spacewalk python-libxml2
+
+<%= snippet 'redhat_register' %>
+
+<%
+  # safemode renderer does not support unary negation
+  pm_set = @host.puppetmaster.empty? ? false : true
+  puppet_enabled = pm_set || @host.params['force-puppet']
+%>
+<% if puppet_enabled %>
+cat > /etc/puppet/puppet.conf << EOF
+<%= snippet 'puppet.conf' %>
+EOF
+/bin/sed -i 's/^START=no/START=yes/' /etc/default/puppet
+/bin/touch /etc/puppet/namespaceauth.conf 
+/usr/bin/puppet agent --config /etc/puppet/puppet.conf --onetime --tags no_such_tag <%= @host.puppetmaster.blank? ? '' : "--server #{@host.puppetmaster}" %> --no-daemonize
+<% end -%>
+
+/usr/bin/wget --quiet --output-document=/dev/null --no-check-certificate <%= foreman_url %>
+

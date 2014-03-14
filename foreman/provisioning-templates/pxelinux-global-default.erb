@@ -1,0 +1,21 @@
+%#
+kind: PXELinux
+name: Community PXE Default
+%>
+
+<%# This template has special name (do not change it) and it is used for booting unknown hosts. %>
+console 0
+serial 0 19200 0
+DEFAULT menu
+PROMPT 0
+MENU TITLE Host Discovery
+TIMEOUT 100
+TOTALTIMEOUT 6000
+ONTIMEOUT discovery
+
+LABEL discovery
+MENU LABEL Foreman Discovery
+KERNEL disco/discovery-debug-0.3.0-1-vmlinuz
+APPEND rootflags=loop initrd=disco/discovery-debug-0.3.0-1-initrd.img root=live:/foreman.iso rootfstype=auto ro rd.live.image rd.live.check rd.lvm=0 rootflags=ro crashkernel=128M elevator=deadline max_loop=256 rd.luks=0 rd.md=0 rd.dm=0 foreman.ip=10.30.0.210 nomodeset selinux=0 stateless console=ttyS0
+
+

@@ -1,0 +1,20 @@
+This are some example files from the demo environment of a talk i gave at 
+Chemnitzer Linuxtage (http://chemnitzer.linux-tage.de/2014/en/vortraege/detail/227)
+
+Directory structure:
+
+foreman:
+
+Provisioning templates and snippets to use with foreman. These are the ones used in the demo
+
+puppet:
+
+Sample puppet modules. Most of them were downloaded from forge.puppetlabs.com:
+
+https://forge.puppetlabs.com/puppetlabs/puppetdb
+https://forge.puppetlabs.com/puppetlabs/apache
+
+scripts:
+
+Some scripts used to automate the build and decomissioning of VMs
+

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+LIBVIRT="qemu+ssh://hypervisor.demo.int/system"
+IMGPATH="/var/lib/libvirt/images"
+
+if [ $# -lt 1 ];then
+  echo Usage ${0##*/} vm-name
+  exit 1
+fi
+
+node=${1%%.*}
+
+virsh -c "$LIBVIRT" "destroy $node; vol-delete ${IMGPATH}/${node}.img; undefine $node"
+

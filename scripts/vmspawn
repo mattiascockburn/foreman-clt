@@ -1,0 +1,55 @@
+#!/bin/bash
+
+export TERM=vt100
+OUTPUT=$(mktemp /tmp/virt_install_XXXX)
+
+CONNECTION="qemu:///system"
+RAM=2048
+VCPU=4
+RANDFOO=$(hexdump -e '/1 ":%02x"' -n 3 /dev/urandom)
+MAC=52:54:00${RANDFOO}
+RNAME="machine-${RANDFOO//:/}"
+NAME=${1:-$RNAME}
+OSVARIANT="rhel6"
+BRIDGE=br1
+DISKSIZE=8
+DISKPATH=/var/lib/libvirt/images
+DESC="Testing foreman provisioning"
+
+echo "Creating VM $NAME with MAC ${MAC}..."
+
+virt-install -n "$NAME" -r "$RAM" --cpu host --vcpus "$VCPU" \
+  --pxe --network bridge=$BRIDGE,model=virtio,mac="$MAC" \
+  --boot network,hd \
+  --graphics vnc --noautoconsole --hvm --description="$DESC" \
+  --disk path="$DISKPATH"/${NAME}.img,size="$DISKSIZE",bus=virtio,format=qcow2,sparse=true,cache=writeback \
+  --connect="$CONNECTION" --virt-type=kvm --os-variant="$OSVARIANT" &>"$OUTPUT"
+if [ $? -ne 0 ];then
+  echo Failed
+  cat "$OUTPUT"
+  rm "$OUTPUT"
+  exit 1
+else
+  echo Success
+fi
+rm "$OUTPUT"
+
+echo Launching serial console
+
+# System will be booted into discovery now
+virsh console "$NAME"
+
+sleep 5
+
+# after initial discovery, some vms won't be rebooted successfully
+# so we need to start them on demand
+virsh start "$NAME"
+virsh console "$NAME"
+
+sleep 5
+
+# After successful kickstart machines are halted because of above bug, so we
+# need to start them here aswell
+virsh start "$NAME"
+virsh console "$NAME"
+

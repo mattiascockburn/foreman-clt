@@ -1,0 +1,81 @@
+#!/usr/bin/python2
+# This script helps cleaning up nodes in Puppet/PuppetDB/Spacewalk
+# It should be seen as a POC not something you deploy in production
+# You should run it from the insatnce running Foreman/Puppet and needs to
+# be able to connect to the Spacewalk API
+# 2014 B1 Systems, Mattias Giese, giese@b1-systems.de
+
+import xmlrpclib
+import sys
+import subprocess
+
+# Some config
+SPACEWALK_URL = "http://spacewalk.demo.int/rpc/api"
+SPACEWALK_LOGIN = "apiuser"
+SPACEWALK_PASSWORD = "apiuser"
+FOREMAN_USER='admin'
+FOREMAN_PASS='changeme'
+
+def swconnect():
+        return xmlrpclib.Server(SPACEWALK_URL, verbose=0)
+
+def swgetkey(client):
+        return client.auth.login(SPACEWALK_LOGIN, SPACEWALK_PASSWORD)
+
+def swlogout(client,key):
+        client.auth.logout(key)
+
+if len(sys.argv) < 1:
+	print 'Usage: %s fqdn' % sys.argv[0]
+	sys.exit(1)
+
+node=sys.argv[1]
+systemid=0
+print 'Trashing node %s' % node
+
+try:   
+        subprocess.check_call(["destroy-vm",node], shell=False, stderr=subprocess.STDOUT)
+        print 'Destroyed VM %s' % node
+except Exception, e:
+        print 'Destroying VM %s failed. %s' % (node,e)
+
+try:
+	swconn = swconnect()
+	swkey = swgetkey(swconn)
+except Exception, e:
+	print 'Could not log into Spacewalk. %s' % e
+	sys.exit(1)
+try:
+	systemid = swconn.system.getId(swkey,node)[0]['id']
+except Exception, e:
+	print 'Could not get ID for system %s. %s' % (node,e)
+try:
+	if systemid != 0:
+		swconn.system.deleteSystem(swkey,systemid)
+		print 'Deleted node in Spacewalk'
+except Exception, e:
+	print 'Could not delete Node %s with systemid %s. %s' % (node,systemid,e)
+
+try:
+	subprocess.check_call(["puppet","node","deactivate",node], shell=False, stderr=subprocess.STDOUT)
+	print 'Deactivated node %s in PuppetDB' % node
+except Exception, e:
+	print 'Deactivating node %s in PuppetDB failed. %s' % (node,e)
+try:
+	subprocess.check_call(["puppet","node","clean","--unexport",node], shell=False, stderr=subprocess.STDOUT)
+	print 'Cleaned node %s in Puppet' % node
+except Exception, e:
+	print 'Removing node %s from Puppet failed. %s' % (node,e)
+try:
+	subprocess.check_call(["hammer","-u",FOREMAN_USER,"-p",FOREMAN_PASS,"host","delete","--name",node], shell=False, stderr=subprocess.STDOUT)
+	print 'Deleted %s in Foreman' % node
+except Exception, e:
+	print 'Removing node %s from Foreman failed. %s' % (node,e)
+
+# workaround as puppetdb still does not unexport resources like nagios_* and ssh*
+try:
+        subprocess.check_call(["/usr/local/bin/clean-icinga",node], shell=False, stderr=subprocess.STDOUT)
+        print 'Purged Icinga config of %s' % node
+except Exception, e:
+        print 'Purging Icinga config for %s failed. %s' % (node,e)
+

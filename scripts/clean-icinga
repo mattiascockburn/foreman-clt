@@ -1,0 +1,14 @@
+#!/bin/bash
+BACKUPDIR=/etc/icinga/old
+CONFDIR=/etc/icinga/conf.d
+
+if [ $# -lt 1 ];then
+  echo Usage ${0##*/} node
+  exit 1
+fi
+
+node=${1%%.*}
+mkdir -p $BACKUPDIR
+mv -v $CONFDIR/*${node}.cfg $BACKUPDIR/
+
+service icinga restart
